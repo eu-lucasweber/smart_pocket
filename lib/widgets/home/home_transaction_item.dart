@@ -1,23 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:smart_pocket/models/category.dart';
 
 class TransactionItem extends StatelessWidget {
   final String description;
-  final String category;
+  final String categoryName;
   final String date;
-  final String value;
-  final bool isIncome;
+  final double value;
+  final CategoryType type;
+
 
   const TransactionItem({
     super.key,
     required this.description,
-    required this.category,
+    required this.categoryName,
     required this.date,
     required this.value,
-    required this.isIncome,
+    required this.type,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isIncome = type == CategoryType.income;
+    final formattedValue = value
+        .toStringAsFixed(2)
+        .replaceAll('.', ',');
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -57,7 +64,7 @@ class TransactionItem extends StatelessWidget {
                 const SizedBox(height: 3),
 
                 Text(
-                  '$category • $date',
+                  '$categoryName • $date',
                   style: const TextStyle(
                     fontSize: 10,
                     color: Colors.grey,
@@ -68,7 +75,7 @@ class TransactionItem extends StatelessWidget {
           ),
 
           Text(
-            value,
+            '${isIncome ? '+' : '-'} R\$ $formattedValue',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

@@ -3,7 +3,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class CategoryChart extends StatelessWidget {
-  const CategoryChart({super.key});
+  final String totalBalance;
+
+  const CategoryChart(
+    {
+      super.key,
+      required this.totalBalance
+    }
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +34,8 @@ class CategoryChart extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          const Text(
-            'R\$ 2.765,75',
+          Text(
+            totalBalance,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
