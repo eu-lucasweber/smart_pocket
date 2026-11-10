@@ -6,7 +6,6 @@ class Transaction {
   final Category category;
   final String date;
   final double value;
-  final CategoryType type;
 
   const Transaction({
     required this.id,
@@ -14,6 +13,5 @@ class Transaction {
     required this.category,
     required this.date,
     required this.value,
-    required this.type,
   });
 }

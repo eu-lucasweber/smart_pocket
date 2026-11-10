@@ -58,7 +58,7 @@ class TransactionList extends StatelessWidget {
                   categoryName: transaction.category.name,
                   date: transaction.date,
                   value: transaction.value,
-                  type: transaction.type,
+                  type: transaction.category.type,
                   onEdit: () => onEdit(transaction),
                   onDelete: () => onDelete(transaction),
                 );

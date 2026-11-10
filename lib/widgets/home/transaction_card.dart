@@ -5,10 +5,7 @@ import 'package:smart_pocket/widgets/home/home_transaction_item.dart';
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
 
-  const TransactionList({
-    super.key,
-    required this.transactions,
-  });
+  const TransactionList({super.key, required this.transactions});
 
   @override
   Widget build(BuildContext context) {
@@ -23,33 +20,30 @@ class TransactionList extends StatelessWidget {
           ? const Center(
               child: Text(
                 'Nenhuma transação encontrada.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             )
           : ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 4,
-              ),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+
               itemCount: transactions.length,
+
               separatorBuilder: (_, __) {
-                return Divider(
-                  height: 1,
-                  color: Colors.grey.shade200,
-                );
+                return Divider(height: 1, color: Colors.grey.shade200);
               },
+
               itemBuilder: (context, index) {
                 final transaction = transactions[index];
 
-                return TransactionItem (
+                return TransactionItem(
                   description: transaction.description,
                   categoryName: transaction.category.name,
                   date: transaction.date,
                   value: transaction.value,
-                  type: transaction.type
+                  type: transaction.category.type,
                 );
               },
             ),

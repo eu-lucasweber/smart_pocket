@@ -26,9 +26,9 @@ class BottomNavigation extends StatelessWidget {
       //   Navigator.pushReplacementNamed(context, '/relatorios');
       //   break;
 
-      // case 3:
-      //   Navigator.pushReplacementNamed(context, '/perfil');
-      //   break;
+      case 3:
+        Navigator.pushReplacementNamed(context, '/profile');
+        break;
     }
   }
 

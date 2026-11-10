@@ -46,7 +46,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
       _descriptionController.text = transaction.description;
       _valueController.text = transaction.value.toStringAsFixed(2);
-      _type = transaction.type;
+      _type = transaction.category.type;
 
       _category = CategoryMock.categories.firstWhere(
         (cat) => cat.id == transaction.category.id,

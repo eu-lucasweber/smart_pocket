@@ -50,9 +50,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final matchesFilter =
         _selectedFilter == 'Todos' ||
         (_selectedFilter == 'Receita' &&
-            transaction.type == CategoryType.income) ||
+            transaction.category.type == CategoryType.income) ||
         (_selectedFilter == 'Despesa' &&
-            transaction.type == CategoryType.expense);
+            transaction.category.type == CategoryType.expense);
 
     return matchesSearch && matchesFilter;
   }).toList();

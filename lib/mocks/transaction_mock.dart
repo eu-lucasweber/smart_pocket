@@ -33,7 +33,6 @@ class TransactionMock {
       category: freelanceMock,
       date: '24/08/2026',
       value: 950.00,
-      type: CategoryType.income,
     ),
     Transaction(
       id: 2,
@@ -41,7 +40,6 @@ class TransactionMock {
       category: transporteMock,
       date: '23/08/2026',
       value: 580.00,
-      type: CategoryType.expense,
     ),
     Transaction(
       id: 3,
@@ -49,7 +47,6 @@ class TransactionMock {
       category: moradiaMock,
       date: '22/08/2026',
       value: 1050.00,
-      type: CategoryType.expense,
     ),
     Transaction(
       id: 4,
@@ -57,7 +54,6 @@ class TransactionMock {
       category: alimentacaoMock,
       date: '21/08/2026',
       value: 455.22,
-      type: CategoryType.expense,
     ),
   ];
 }
