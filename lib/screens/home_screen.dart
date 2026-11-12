@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadTransactions() async {
     try {
       final transactions = await _transactionRepository.getAll();
-
+      debugPrint('Total de transações: ${transactions.length}');
       if (!mounted) return;
 
       setState(() {

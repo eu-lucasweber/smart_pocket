@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import 'package:path/path.dart';
+import 'package:smart_pocket/mocks/transaction_mock.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
@@ -19,7 +22,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String fileName) async {
     final databasePath = await getDatabasesPath();
     final path = join(databasePath, fileName);
-
+  
     return await openDatabase(
       path,
       version: 1,
@@ -31,6 +34,7 @@ class DatabaseHelper {
   }
 
   Future<void> _createDB(Database db, int version) async {
+    debugPrint('CRIANDO BANCO...');
     // Tabela de categorias
     await db.execute('''
       CREATE TABLE categories (
@@ -83,6 +87,9 @@ class DatabaseHelper {
     // Categorias iniciais
     await _insertInitialCategories(db);
 
+    // Transaçãoes mock
+    await _insertTransactionMock(db);
+
     // Perfil inicial
     await db.insert('user_profile', {
       'name': 'Usuário',
@@ -111,6 +118,20 @@ class DatabaseHelper {
     }
 
     await batch.commit(noResult: true);
+  }
+
+  Future<void> _insertTransactionMock(Database db) async {
+    await db.transaction((txn) async {
+      for (final transaction in TransactionMock.transactions) {
+        await txn.insert('transactions', {
+          'description': transaction.description,
+          'category_id': transaction.category.id,
+          'date': transaction.date,
+          'value': transaction.value,
+        });
+      }
+      debugPrint('MOCKS INSERIDOS: ${TransactionMock.transactions.length}');
+    });
   }
 
   Future<void> close() async {
