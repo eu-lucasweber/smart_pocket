@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:smart_pocket/models/transaction.dart';
 import 'package:smart_pocket/models/category.dart';
@@ -18,8 +17,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TransactionRepository _transactionRepository =
-      TransactionRepository();
+  final TransactionRepository _transactionRepository = TransactionRepository();
 
   List<Transaction> _transactions = [];
 
@@ -33,7 +31,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadTransactions() async {
     try {
-      final transactions = await _transactionRepository.getAll();
+      final now = DateTime.now();
+
+      final transactions = await _transactionRepository.getAllByMonth(
+        month: now.month,
+        year: now.year,
+      );
       debugPrint('Total de transações: ${transactions.length}');
       if (!mounted) return;
 
@@ -56,14 +59,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final double total = _transactions.fold(
       0.0,
-      (total, transaction) =>
-          transaction.category.type == CategoryType.income
-              ? total + transaction.value
-              : total - transaction.value,
+      (total, transaction) => transaction.category.type == CategoryType.income
+          ? total + transaction.value
+          : total - transaction.value,
     );
 
-    final String totalBalance =
-        "R\$ ${total.toStringAsFixed(2)}";
+    final String totalBalance = "R\$ ${total.toStringAsFixed(2)}";
 
     return Scaffold(
       appBar: AppBar(
@@ -135,9 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 14),
 
-                    TransactionList(
-                      transactions: _transactions,
-                    ),
+                    TransactionList(transactions: _transactions),
                   ],
                 ),
               ),

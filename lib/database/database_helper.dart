@@ -87,9 +87,6 @@ class DatabaseHelper {
     // Categorias iniciais
     await _insertInitialCategories(db);
 
-    // Transaçãoes mock
-    await _insertTransactionMock(db);
-
     // Perfil inicial
     await db.insert('user_profile', {
       'name': 'Usuário',
@@ -118,20 +115,6 @@ class DatabaseHelper {
     }
 
     await batch.commit(noResult: true);
-  }
-
-  Future<void> _insertTransactionMock(Database db) async {
-    await db.transaction((txn) async {
-      for (final transaction in TransactionMock.transactions) {
-        await txn.insert('transactions', {
-          'description': transaction.description,
-          'category_id': transaction.category.id,
-          'date': transaction.date,
-          'value': transaction.value,
-        });
-      }
-      debugPrint('MOCKS INSERIDOS: ${TransactionMock.transactions.length}');
-    });
   }
 
   Future<void> close() async {

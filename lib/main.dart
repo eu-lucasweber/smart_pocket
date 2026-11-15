@@ -1,5 +1,6 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:smart_pocket/screens/edit_transaction_screen.dart';
 import 'package:smart_pocket/screens/profile_screen.dart';
 
@@ -13,7 +14,8 @@ import 'screens/budget_form_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa o banco de dados SQLite
+  await initializeDateFormatting('pt_BR', null);
+
   await DatabaseHelper.instance.database;
 
   runApp(const ControleFinanceiroApp());
@@ -27,6 +29,9 @@ class ControleFinanceiroApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Controle Financeiro',
+
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [Locale('pt', 'BR')],
 
       theme: ThemeData(
         useMaterial3: true,

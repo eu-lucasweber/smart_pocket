@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_pocket/repositories/transaction_repository.dart';
 
 import '../models/budget.dart';
 import '../models/category.dart';
@@ -17,12 +18,34 @@ class BudgetsScreen extends StatefulWidget {
 class _BudgetsScreenState extends State<BudgetsScreen> {
   final List<Budget> _budgets = BudgetMock.categories;
 
-  late List<Transaction> _transactions;
+  final TransactionRepository _transactionRepository = TransactionRepository();
+
+  List<Transaction> _transactions = [];
 
   @override
   void initState() {
     super.initState();
-    _transactions = [...TransactionMock.transactions];
+    _loadTransactions();
+  }
+
+  Future<void> _loadTransactions() async {
+    try {
+      final now = DateTime.now();
+
+      final transactions = await _transactionRepository.getAllByMonth(
+        month: now.month,
+        year: now.year,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _transactions = transactions;
+      });
+    } catch (e) {
+      debugPrint('Erro ao carregar transações: $e');
+
+      if (!mounted) return;
+    }
   }
 
   double _spentFor(Budget budget) {
@@ -30,19 +53,13 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
         .where(
           (transaction) =>
               transaction.category.type == CategoryType.expense &&
-              transaction.category == budget.category
+              transaction.category == budget.category,
         )
-        .fold<double>(
-          0,
-          (total, transaction) => total + transaction.value,
-        );
+        .fold<double>(0, (total, transaction) => total + transaction.value);
   }
 
   double get _totalBudget {
-    return _budgets.fold<double>(
-      0,
-      (total, budget) => total + budget.amount,
-    );
+    return _budgets.fold<double>(0, (total, budget) => total + budget.amount);
   }
 
   double get _totalSpent {
@@ -80,10 +97,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
       if (budget == null) {
         final newId = _budgets.isEmpty
             ? 1
-            : _budgets
-                    .map((item) => item.id)
-                    .reduce((a, b) => a > b ? a : b) +
-                1;
+            : _budgets.map((item) => item.id).reduce((a, b) => a > b ? a : b) +
+                  1;
 
         _budgets.add(
           Budget(
@@ -113,9 +128,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Excluir orçamento'),
-        content: Text(
-          'Deseja excluir o orçamento de ${budget.category}?',
-        ),
+        content: Text('Deseja excluir o orçamento de ${budget.category}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -136,9 +149,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
       _budgets.removeWhere((item) => item.id == budget.id);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Orçamento excluído.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Orçamento excluído.')));
   }
 
   @override
@@ -165,10 +178,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
             children: [
               const Text(
                 'Controle seus gastos por categoria',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                ),
+                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
               ),
               const SizedBox(height: 20),
 
@@ -196,8 +206,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                       title: 'Disponível',
                       value: _formatCurrency(_available),
                       icon: Icons.savings_outlined,
-                      iconColor:
-                          _available < 0 ? Colors.red : const Color(0xFF28C76F),
+                      iconColor: _available < 0
+                          ? Colors.red
+                          : const Color(0xFF28C76F),
                     ),
                   ),
                 ],
@@ -242,9 +253,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigation(
-        selectedIndex: 3,
-      ),
+      bottomNavigationBar: BottomNavigation(selectedIndex: 3),
     );
   }
 
@@ -321,10 +330,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
             const SizedBox(height: 10),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF6B7280),
-              ),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
             ),
             const SizedBox(height: 5),
             FittedBox(
@@ -354,8 +360,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final progressColor = isOverBudget
         ? Colors.red
         : progress >= 0.8
-            ? Colors.orange
-            : const Color(0xFF28C76F);
+        ? Colors.orange
+        : const Color(0xFF28C76F);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -391,24 +397,15 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     }
                   },
                   itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Editar'),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Excluir'),
-                    ),
+                    PopupMenuItem(value: 'edit', child: Text('Editar')),
+                    PopupMenuItem(value: 'delete', child: Text('Excluir')),
                   ],
                 ),
               ],
             ),
             Text(
               'Orçamento: ${_formatCurrency(budget.amount)}',
-              style: const TextStyle(
-                color: Color(0xFF6B7280),
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13),
             ),
             const SizedBox(height: 14),
             Row(
@@ -416,10 +413,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               children: [
                 const Text(
                   'Gasto',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
                 ),
                 Text(
                   _formatCurrency(spent),
@@ -494,19 +488,13 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
           SizedBox(height: 12),
           Text(
             'Nenhum orçamento cadastrado',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 6),
           Text(
             'Toque em "Novo" para criar seu primeiro orçamento.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
           ),
         ],
       ),
