@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:smart_pocket/models/category.dart';
 import 'package:smart_pocket/models/transaction.dart';
-import 'package:smart_pocket/mocks/category_mock.dart';
 import 'package:smart_pocket/repositories/transaction_repository.dart';
 import 'package:smart_pocket/repositories/category_repository.dart';
 

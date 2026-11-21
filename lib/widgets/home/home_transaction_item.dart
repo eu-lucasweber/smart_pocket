@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
 import 'package:smart_pocket/models/category.dart';
 
 class TransactionItem extends StatelessWidget {
@@ -7,7 +9,6 @@ class TransactionItem extends StatelessWidget {
   final String date;
   final double value;
   final CategoryType type;
-
 
   const TransactionItem({
     super.key,
@@ -20,10 +21,10 @@ class TransactionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+
     final isIncome = type == CategoryType.income;
-    final formattedValue = value
-        .toStringAsFixed(2)
-        .replaceAll('.', ',');
+    final formattedValue = value.toStringAsFixed(2).replaceAll('.', ',');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -39,9 +40,7 @@ class TransactionItem extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isIncome
-                  ? Icons.arrow_downward
-                  : Icons.arrow_upward,
+              isIncome ? Icons.arrow_downward : Icons.arrow_upward,
               size: 17,
               color: isIncome ? Colors.green : Colors.red,
             ),
@@ -65,17 +64,14 @@ class TransactionItem extends StatelessWidget {
 
                 Text(
                   '$categoryName • $date',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ],
             ),
           ),
 
           Text(
-            '${isIncome ? '+' : '-'} R\$ $formattedValue',
+            '${isIncome ? '+' : '-'} ${app.currency.currencySymbol} $formattedValue',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

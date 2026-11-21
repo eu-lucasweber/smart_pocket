@@ -120,4 +120,10 @@ class TransactionRepository {
       whereArgs: [id],
     );
   }
+
+  Future<void> delete(int id) async {
+    final db = await _databaseHelper.database;
+
+    await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+  }
 }

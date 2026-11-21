@@ -1,29 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
+
 import '../../models/category.dart';
-import '../../mocks/category_mock.dart';
 
 class TransactionCategoryDropdown extends StatelessWidget {
   final Category? selectedCategory;
   final CategoryType categoryType;
   final ValueChanged<Category?> onCategoryChanged;
-  final List<Category>? categories;
 
   const TransactionCategoryDropdown({
     super.key,
     required this.selectedCategory,
     required this.categoryType,
     required this.onCategoryChanged,
-    this.categories,
   });
 
   @override
   Widget build(BuildContext context) {
-    final availableCategories = (categories ?? CategoryMock.categories)
-        .where((category) => category.type == categoryType)
-        .toList();
+    final app = context.watch<AppController>();
+    final availableCategories = app.categoriesOfType(categoryType);
+
+    Category? currentValue;
+    for (final category in availableCategories) {
+      if (category.id == selectedCategory?.id) {
+        currentValue = category;
+        break;
+      }
+    }
 
     return DropdownButtonFormField<Category>(
-      value: selectedCategory,
+      value: currentValue,
+      isExpanded: true,
       decoration: const InputDecoration(
         filled: true,
         fillColor: Colors.white,
@@ -33,19 +41,16 @@ class TransactionCategoryDropdown extends StatelessWidget {
         ),
       ),
       hint: const Text('Selecione uma categoria'),
-      items: availableCategories.map((category) {
-        return DropdownMenuItem<Category>(
-          value: category,
-          child: Text(category.name),
-        );
-      }).toList(),
+      items: availableCategories
+          .map(
+            (category) => DropdownMenuItem<Category>(
+              value: category,
+              child: Text(category.name),
+            ),
+          )
+          .toList(),
       onChanged: onCategoryChanged,
-      validator: (value) {
-        if (value == null) {
-          return 'Selecione uma categoria';
-        }
-        return null;
-      },
+      validator: (value) => value == null ? 'Selecione uma categoria' : null,
     );
   }
 }

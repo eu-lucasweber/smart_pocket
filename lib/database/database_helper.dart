@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'package:path/path.dart';
-import 'package:smart_pocket/mocks/transaction_mock.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {

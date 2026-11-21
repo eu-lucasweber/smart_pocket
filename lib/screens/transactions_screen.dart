@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:smart_pocket/mocks/category_mock.dart';
-import 'package:smart_pocket/mocks/transaction_mock.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
 import 'package:smart_pocket/models/category.dart';
 import 'package:smart_pocket/models/transaction.dart';
-import 'package:smart_pocket/repositories/transaction_repository.dart';
 
 import '../widgets/bottom_navigation.dart';
 import '../widgets/transactions/transaction_filters.dart';
@@ -22,34 +21,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   String _selectedFilter = 'Todos';
 
-  final TransactionRepository _transactionRepository = TransactionRepository();
-
   List<Transaction> _transactions = [];
 
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
-  }
-
-  Future<void> _loadTransactions() async {
-    try {
-      final now = DateTime.now();
-
-      final transactions = await _transactionRepository.getAllByMonth(
-        month: now.month,
-        year: now.year,
-      );
-      if (!mounted) return;
-
-      setState(() {
-        _transactions = transactions;
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar transações: $e');
-
-      if (!mounted) return;
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppController>().load();
+    });
   }
 
   @override
@@ -59,22 +38,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   List<Transaction> get _filteredTransactions {
-    final search = _searchController.text.toLowerCase();
+    final search = _searchController.text.trim().toLowerCase();
 
     return _transactions.where((transaction) {
-      String categoryTemp = "";
-
-      final index = CategoryMock.categories.indexWhere(
-        (category) => category.id == transaction.category.id,
-      );
-
-      if (index != -1) {
-        categoryTemp = CategoryMock.categories[index].name;
-      }
-
       final matchesSearch =
           transaction.description.toLowerCase().contains(search) ||
-          categoryTemp.toLowerCase().contains(search);
+          transaction.category.name.toLowerCase().contains(search);
 
       final matchesFilter =
           _selectedFilter == 'Todos' ||
@@ -89,6 +58,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    _transactions = app.transactions;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
 
@@ -197,7 +168,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (!mounted) return;
 
     if (result == true) {
-      await _loadTransactions();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<AppController>().load();
+      });
     }
   }
 
@@ -211,14 +184,27 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (!mounted) return;
 
     if (result == true) {
-      await _loadTransactions();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<AppController>().load();
+      });
     }
   }
 
-  void _deleteTransaction(Transaction transaction) {
-    setState(() {
-      _transactions.removeAt(0);
-    });
+  Future<void> _deleteTransaction(Transaction transaction) async {
+    final app = context.read<AppController>();
+
+    try {
+      await app.deleteTransaction(transaction);
+    } catch (e) {
+      debugPrint('Erro ao excluir transação: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível excluir a transação.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${transaction.description} removido.')),

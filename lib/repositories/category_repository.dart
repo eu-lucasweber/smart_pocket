@@ -1,27 +1,25 @@
-
 import 'package:smart_pocket/database/database_helper.dart';
 import 'package:smart_pocket/models/category.dart';
 
 class CategoryRepository {
   final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
+  Category _fromMap(Map<String, Object?> map) {
+    return Category(
+      id: map['id'] as int,
+      name: map['name'] as String,
+      type: map['type'] == 'income'
+          ? CategoryType.income
+          : CategoryType.expense,
+    );
+  }
+
   Future<List<Category>> getAll() async {
     final db = await _databaseHelper.database;
 
-    final result = await db.query(
-      'categories',
-      orderBy: 'name ASC',
-    );
+    final result = await db.query('categories', orderBy: 'name ASC');
 
-    return result.map((map) {
-      return Category(
-        id: map['id'] as int,
-        name: map['name'] as String,
-        type: map['type'] == 'income'
-            ? CategoryType.income
-            : CategoryType.expense,
-      );
-    }).toList();
+    return result.map(_fromMap).toList();
   }
 
   Future<Category?> getByNameAndType({
@@ -39,14 +37,20 @@ class CategoryRepository {
 
     if (result.isEmpty) return null;
 
-    final map = result.first;
+    return _fromMap(result.first);
+  }
 
-    return Category(
-      id: map['id'] as int,
-      name: map['name'] as String,
-      type: map['type'] == 'income'
-          ? CategoryType.income
-          : CategoryType.expense,
-    );
+  Future<Category> insert({
+    required String name,
+    required CategoryType type,
+  }) async {
+    final db = await _databaseHelper.database;
+
+    final id = await db.insert('categories', {
+      'name': name,
+      'type': type.name,
+    });
+
+    return Category(id: id, name: name, type: type);
   }
 }

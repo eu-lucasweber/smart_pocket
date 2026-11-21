@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
 import 'package:smart_pocket/models/category.dart';
 
 class TransactionItem extends StatelessWidget {
@@ -24,6 +26,8 @@ class TransactionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final app = context.watch<AppController>();
+
     final isIncome = type == CategoryType.income;
 
     final formattedValue = value
@@ -61,7 +65,7 @@ class TransactionItem extends StatelessWidget {
           ),
 
           Text(
-            '${isIncome ? '+' : '-'} R\$ $formattedValue',
+            '${isIncome ? '+' : '-'} ${app.currency.currencySymbol} $formattedValue',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,

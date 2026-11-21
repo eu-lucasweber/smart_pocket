@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
 import 'package:smart_pocket/models/transaction.dart';
-import 'package:smart_pocket/models/category.dart';
-import 'package:smart_pocket/repositories/transaction_repository.dart';
 import 'package:smart_pocket/widgets/home/transaction_card.dart';
 
 import '../widgets/home/balance_card.dart';
@@ -17,54 +17,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TransactionRepository _transactionRepository = TransactionRepository();
-
-  List<Transaction> _transactions = [];
-
-  bool _isLoading = true;
-
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
-  }
-
-  Future<void> _loadTransactions() async {
-    try {
-      final now = DateTime.now();
-
-      final transactions = await _transactionRepository.getAllByMonth(
-        month: now.month,
-        year: now.year,
-      );
-      debugPrint('Total de transações: ${transactions.length}');
-      if (!mounted) return;
-
-      setState(() {
-        _transactions = transactions;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar transações: $e');
-
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppController>().load();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final double total = _transactions.fold(
-      0.0,
-      (total, transaction) => transaction.category.type == CategoryType.income
-          ? total + transaction.value
-          : total - transaction.value,
-    );
+    final app = context.watch<AppController>();
 
-    final String totalBalance = "R\$ ${total.toStringAsFixed(2)}";
+    final String totalBalance = app.currency.format(app.balance);
+    final String totalIncomeFormatted = app.currency.format(app.totalIncome);
+    final String totalExpenseFormatted = app.currency.format(app.totalExpense);
+
+    final bool isLoading = app.isLoading;
+    final List<Transaction> transactions = app.transactions;
 
     return Scaffold(
       appBar: AppBar(
@@ -97,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       body: SafeArea(
-        child: _isLoading
+        child: isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(12),
@@ -113,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: SummaryCard(
                             title: 'Receitas',
-                            value: totalBalance,
+                            value: totalIncomeFormatted,
                             icon: Icons.north_east,
                             iconColor: Colors.green,
                           ),
@@ -122,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: SummaryCard(
                             title: 'Despesas',
-                            value: totalBalance,
+                            value: totalExpenseFormatted,
                             icon: Icons.south_east,
                             iconColor: Colors.red,
                           ),
@@ -132,11 +102,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 14),
 
-                    CategoryChart(totalBalance: totalBalance),
+                    CategoryChart(transactions: transactions),
 
                     const SizedBox(height: 14),
 
-                    TransactionList(transactions: _transactions),
+                    TransactionList(transactions: transactions),
                   ],
                 ),
               ),

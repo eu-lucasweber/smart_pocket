@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
 import 'package:smart_pocket/screens/edit_transaction_screen.dart';
 import 'package:smart_pocket/screens/profile_screen.dart';
 
@@ -18,7 +20,12 @@ Future<void> main() async {
 
   await DatabaseHelper.instance.database;
 
-  runApp(const ControleFinanceiroApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppController()..load(),
+      child: const ControleFinanceiroApp(),
+    ),
+  );
 }
 
 class ControleFinanceiroApp extends StatelessWidget {

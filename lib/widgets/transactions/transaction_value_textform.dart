@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
 
 class TransactionValueTextForm extends StatelessWidget {
   final TextEditingController valueController;
 
-  const TransactionValueTextForm({
-    super.key,
-    required this.valueController,
-  });
+  const TransactionValueTextForm({super.key, required this.valueController});
 
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+
     return TextFormField(
       controller: valueController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: const InputDecoration(
-        prefixText: 'R\$ ',
+      decoration: InputDecoration(
+        prefixText: '${app.currency.currencySymbol} ',
         hintText: '0,00',
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(
+        border: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide.none,
         ),

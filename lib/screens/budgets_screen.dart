@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:smart_pocket/repositories/transaction_repository.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
+import 'package:smart_pocket/models/budgetException.dart';
 
 import '../models/budget.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
-import '../mocks/budgets_mock.dart';
-import '../mocks/transaction_mock.dart';
 import '../widgets/bottom_navigation.dart';
 
 class BudgetsScreen extends StatefulWidget {
@@ -16,72 +16,38 @@ class BudgetsScreen extends StatefulWidget {
 }
 
 class _BudgetsScreenState extends State<BudgetsScreen> {
-  final List<Budget> _budgets = BudgetMock.categories;
-
-  final TransactionRepository _transactionRepository = TransactionRepository();
-
-  List<Transaction> _transactions = [];
-
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppController>().load();
+    });
   }
 
-  Future<void> _loadTransactions() async {
-    try {
-      final now = DateTime.now();
-
-      final transactions = await _transactionRepository.getAllByMonth(
-        month: now.month,
-        year: now.year,
-      );
-      if (!mounted) return;
-
-      setState(() {
-        _transactions = transactions;
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar transações: $e');
-
-      if (!mounted) return;
-    }
-  }
-
-  double _spentFor(Budget budget) {
-    return _transactions
+  double _spentFor(Budget budget, List<Transaction> transactions) {
+    return transactions
         .where(
           (transaction) =>
               transaction.category.type == CategoryType.expense &&
-              transaction.category == budget.category,
+              transaction.category.id == budget.category.id,
         )
         .fold<double>(0, (total, transaction) => total + transaction.value);
   }
 
-  double get _totalBudget {
-    return _budgets.fold<double>(0, (total, budget) => total + budget.amount);
-  }
+  double _totalBudget(List<Budget> budgets) =>
+      budgets.fold<double>(0, (total, b) => total + b.amount);
 
-  double get _totalSpent {
-    return _budgets.fold<double>(
-      0,
-      (total, budget) => total + _spentFor(budget),
+  double _totalSpent(List<Budget> budgets, List<Transaction> transactions) =>
+      budgets.fold<double>(0, (total, b) => total + _spentFor(b, transactions));
+
+  void _showError(Object error, String fallback) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(error is BudgetException ? error.message : fallback),
+      ),
     );
-  }
-
-  double get _available {
-    return _totalBudget - _totalSpent;
-  }
-
-  String _formatCurrency(double value) {
-    final formatted = value.abs().toStringAsFixed(2).replaceAll('.', ',');
-    final parts = formatted.split(',');
-    final integerPart = parts[0].replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (match) => '.',
-    );
-
-    return '${value < 0 ? '-R\$ ' : 'R\$ '}$integerPart,${parts[1]}';
   }
 
   Future<void> _openBudgetForm({Budget? budget}) async {
@@ -93,34 +59,18 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
     if (!mounted || result is! Budget) return;
 
-    setState(() {
+    final app = context.read<AppController>();
+
+    try {
       if (budget == null) {
-        final newId = _budgets.isEmpty
-            ? 1
-            : _budgets.map((item) => item.id).reduce((a, b) => a > b ? a : b) +
-                  1;
-
-        _budgets.add(
-          Budget(
-            id: newId,
-            category: result.category,
-            amount: result.amount,
-            description: result.description,
-          ),
-        );
+        await app.addBudget(result);
       } else {
-        final index = _budgets.indexWhere((item) => item.id == budget.id);
-
-        if (index != -1) {
-          _budgets[index] = Budget(
-            id: budget.id,
-            category: result.category,
-            amount: result.amount,
-            description: result.description,
-          );
-        }
+        await app.updateBudget(result);
       }
-    });
+    } catch (e) {
+      debugPrint('Erro ao salvar orçamento: $e');
+      _showError(e, 'Não foi possível salvar o orçamento.');
+    }
   }
 
   Future<void> _deleteBudget(Budget budget) async {
@@ -128,7 +78,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Excluir orçamento'),
-        content: Text('Deseja excluir o orçamento de ${budget.category}?'),
+        content: Text('Deseja excluir o orçamento de ${budget.category.name}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -145,9 +95,17 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    setState(() {
-      _budgets.removeWhere((item) => item.id == budget.id);
-    });
+    final app = context.read<AppController>();
+
+    try {
+      await app.deleteBudget(budget);
+    } catch (e) {
+      debugPrint('Erro ao excluir orçamento: $e');
+      _showError(e, 'Não foi possível excluir o orçamento.');
+      return;
+    }
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(
       context,
@@ -156,6 +114,14 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    final budgets = app.budgets;
+    final transactions = app.transactions;
+
+    final totalBudget = _totalBudget(budgets);
+    final totalSpent = _totalSpent(budgets, transactions);
+    final available = totalBudget - totalSpent;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -184,7 +150,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
               _buildSummaryCard(
                 title: 'Orçamento total',
-                value: _formatCurrency(_totalBudget),
+                value: app.currency.format(totalBudget),
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: const Color(0xFF28C76F),
               ),
@@ -195,7 +161,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                   Expanded(
                     child: _buildSmallSummaryCard(
                       title: 'Total gasto',
-                      value: _formatCurrency(_totalSpent),
+                      value: app.currency.format(totalSpent),
                       icon: Icons.trending_up,
                       iconColor: Colors.orange,
                     ),
@@ -204,9 +170,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                   Expanded(
                     child: _buildSmallSummaryCard(
                       title: 'Disponível',
-                      value: _formatCurrency(_available),
+                      value: app.currency.format(available),
                       icon: Icons.savings_outlined,
-                      iconColor: _available < 0
+                      iconColor: available < 0
                           ? Colors.red
                           : const Color(0xFF28C76F),
                     ),
@@ -245,15 +211,17 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
               const SizedBox(height: 16),
 
-              if (_budgets.isEmpty)
+              if (budgets.isEmpty)
                 _buildEmptyState()
               else
-                ..._budgets.map(_buildBudgetCard),
+                ...budgets.map(
+                  (budget) => _buildBudgetCard(budget, app, transactions),
+                ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigation(selectedIndex: 3),
+      bottomNavigationBar: const BottomNavigation(selectedIndex: 2),
     );
   }
 
@@ -351,8 +319,12 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     );
   }
 
-  Widget _buildBudgetCard(Budget budget) {
-    final spent = _spentFor(budget);
+  Widget _buildBudgetCard(
+    Budget budget,
+    AppController app,
+    List<Transaction> transactions,
+  ) {
+    final spent = _spentFor(budget, transactions);
     final remaining = budget.amount - spent;
     final progress = budget.amount <= 0 ? 0.0 : spent / budget.amount;
     final isOverBudget = spent > budget.amount;
@@ -404,7 +376,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               ],
             ),
             Text(
-              'Orçamento: ${_formatCurrency(budget.amount)}',
+              'Orçamento: ${app.currency.format(budget.amount)}',
               style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13),
             ),
             const SizedBox(height: 14),
@@ -416,7 +388,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                   style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
                 ),
                 Text(
-                  _formatCurrency(spent),
+                  app.currency.format(spent),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -441,7 +413,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                   child: Text(
                     isOverBudget
                         ? 'Acima do orçamento'
-                        : 'Disponível: ${_formatCurrency(remaining)}',
+                        : 'Disponível: ${app.currency.format(remaining)}',
                     style: TextStyle(
                       color: isOverBudget
                           ? Colors.red

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_pocket/controllers/app_controller.dart';
 
 import '../models/budget.dart';
 import '../models/category.dart';
-import '../mocks/category_mock.dart';
 
 class BudgetFormScreen extends StatefulWidget {
   const BudgetFormScreen({super.key});
@@ -20,26 +21,12 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
 
   Budget? _existingBudget;
 
-  String? _selectedCategory;
-  int _selectedMonth = DateTime.now().month;
-  int _selectedYear = DateTime.now().year;
+  // Guarda o id da categoria selecionada, e não o nome.
+  int? _selectedCategoryId;
 
   bool _initialized = false;
-
-  final List<String> _months = const [
-    'Janeiro',
-    'Fevereiro',
-    'Março',
-    'Abril',
-    'Maio',
-    'Junho',
-    'Julho',
-    'Agosto',
-    'Setembro',
-    'Outubro',
-    'Novembro',
-    'Dezembro',
-  ];
+  bool _newCategory = false;
+  bool _isSaving = false;
 
   @override
   void didChangeDependencies() {
@@ -53,7 +40,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
     if (arguments is Budget) {
       _existingBudget = arguments;
 
-      _selectedCategory = arguments.category.name;
+      _selectedCategoryId = arguments.category.id;
       _amountController.text = arguments.amount.toStringAsFixed(2);
       _descriptionController.text = arguments.description ?? '';
     }
@@ -67,26 +54,13 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
     super.dispose();
   }
 
-  List<String> get _availableCategories {
-    final categories = CategoryMock.categories
-        .where((category) => category.type == CategoryType.expense)
-        .map((category) => category.name)
-        .toSet()
-        .toList();
-
-    // Inclui a categoria selecionada mesmo que tenha sido criada
-    // durante esta sessão e ainda não esteja no mock.
-    if (_selectedCategory != null &&
-        !categories.contains(_selectedCategory)) {
-      categories.add(_selectedCategory!);
-    }
-
-    categories.sort();
-    return categories;
+  List<Category> _availableCategories(AppController app) {
+    return app.categoriesOfType(CategoryType.expense)
+      ..sort((a, b) => a.name.compareTo(b.name));
   }
 
   double? _parseAmount(String value) {
-    var normalized = value.trim().replaceAll('R\$', '').replaceAll(' ', '');
+    var normalized = value.trim().replaceAll(RegExp(r'[^\d.,]'), '');
 
     if (normalized.isEmpty) return null;
 
@@ -98,46 +72,85 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
     return double.tryParse(normalized);
   }
 
-  void _saveBudget() {
+  Future<void> _saveBudget() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
-    List<Category> _categories = CategoryMock.categories;
-    final category_id = (_selectedCategory ?? _categoryController.text).trim();
-    final amount = _parseAmount(_amountController.text);
 
-    final category = _categories.firstWhere(
-        (category) => category.id == category_id,
-        orElse: () => _categories.first,
+    final amount = _parseAmount(_amountController.text);
+    if (amount == null) return;
+
+    final app = context.read<AppController>();
+
+    setState(() => _isSaving = true);
+
+    try {
+      Category? category;
+
+      if (_newCategory) {
+        // Cria a categoria no banco (ou devolve a existente com o mesmo nome).
+        category = await app.addCategory(
+          name: _categoryController.text,
+          type: CategoryType.expense,
+        );
+      } else {
+        for (final item in app.categories) {
+          if (item.id == _selectedCategoryId) {
+            category = item;
+            break;
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      if (category == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecione uma categoria.')),
+        );
+        return;
+      }
+
+      final description = _descriptionController.text.trim();
+
+      final budget = Budget(
+        id: _existingBudget?.id ?? 0,
+        category: category,
+        amount: amount,
+        description: description.isEmpty ? null : description,
       );
 
-    if (category == null || amount == null) return;
-
-    final budget = Budget(
-      id: _existingBudget?.id ?? 0,
-      category: category,
-      amount: amount,
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-    );
-
-    Navigator.pop(context, budget);
+      Navigator.pop(context, budget);
+    } catch (e) {
+      debugPrint('Erro ao salvar orçamento: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível salvar o orçamento.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
-  void _selectExistingCategory(String? value) {
+  void _selectExistingCategory(int? value) {
     setState(() {
-      _selectedCategory = value;
+      _selectedCategoryId = value;
       _categoryController.clear();
     });
   }
 
-  void _useNewCategory() {
+  void _toggleNewCategory() {
     setState(() {
-      _selectedCategory = null;
+      _newCategory = !_newCategory;
+      _selectedCategoryId = null;
+      _categoryController.clear();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppController>();
+    final categories = _availableCategories(app);
+
     final isEditing = _existingBudget != null;
 
     return Scaffold(
@@ -165,10 +178,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
               children: [
                 const Text(
                   'Defina um limite de gastos para uma categoria.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7280),
-                  ),
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
                 ),
                 const SizedBox(height: 20),
 
@@ -176,47 +186,58 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                   title: 'Dados do orçamento',
                   icon: Icons.account_balance_wallet_outlined,
                   children: [
-                    const Text(
-                      'Categoria existente',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                    if (!_newCategory) ...[
+                      const Text(
+                        'Categoria',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _availableCategories.contains(_selectedCategory)
-                          ? _selectedCategory
-                          : null,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        hintText: 'Selecione uma categoria',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value:
+                            categories.any((c) => c.id == _selectedCategoryId)
+                            ? _selectedCategoryId
+                            : null,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          hintText: 'Selecione uma categoria',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: categories
+                            .map(
+                              (category) => DropdownMenuItem<int>(
+                                value: category.id,
+                                child: Text(category.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _selectExistingCategory,
+                        validator: (value) =>
+                            value == null ? 'Selecione uma categoria' : null,
                       ),
-                      items: _availableCategories
-                          .map(
-                            (category) => DropdownMenuItem<String>(
-                              value: category,
-                              child: Text(category),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: _selectExistingCategory,
-                    ),
+                    ],
+
                     const SizedBox(height: 12),
+
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
-                        onPressed: _useNewCategory,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Cadastrar nova categoria'),
+                        onPressed: _toggleNewCategory,
+                        icon: Icon(_newCategory ? Icons.list : Icons.add),
+                        label: Text(
+                          _newCategory
+                              ? 'Selecionar categoria existente'
+                              : 'Cadastrar nova categoria',
+                        ),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF28C76F),
                         ),
                       ),
                     ),
 
-                    if (_selectedCategory == null) ...[
+                    if (_newCategory) ...[
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _categoryController,
@@ -228,19 +249,16 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                           prefixIcon: Icon(Icons.category_outlined),
                         ),
                         validator: (value) {
-                          if (_selectedCategory != null) return null;
-
                           final name = value?.trim() ?? '';
 
                           if (name.isEmpty) {
                             return 'Informe o nome da categoria';
                           }
 
-                          final duplicate = CategoryMock.categories.any(
+                          final duplicate = categories.any(
                             (category) =>
-                                category.type == CategoryType.expense &&
                                 category.name.toLowerCase() ==
-                                    name.toLowerCase(),
+                                name.toLowerCase(),
                           );
 
                           if (duplicate) {
@@ -255,14 +273,15 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                     const SizedBox(height: 20),
                     TextFormField(
                       controller: _amountController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
                         labelText: 'Valor do orçamento *',
                         hintText: 'Ex.: 250,00',
-                        prefixText: 'R\$ ',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.payments_outlined),
+                        prefixText: '${app.currency.currencySymbol} ',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.payments_outlined),
                       ),
                       validator: (value) {
                         final amount = _parseAmount(value ?? '');
@@ -295,60 +314,10 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
 
                 const SizedBox(height: 20),
 
-                _buildSectionCard(
-                  title: 'Período',
-                  icon: Icons.calendar_month_outlined,
-                  children: [
-                    DropdownButtonFormField<int>(
-                      value: _selectedMonth,
-                      decoration: const InputDecoration(
-                        labelText: 'Mês',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: List.generate(
-                        12,
-                        (index) => DropdownMenuItem<int>(
-                          value: index + 1,
-                          child: Text(_months[index]),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedMonth = value);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      value: _selectedYear,
-                      decoration: const InputDecoration(
-                        labelText: 'Ano',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: List.generate(
-                        6,
-                        (index) {
-                          final year = DateTime.now().year + index - 2;
-
-                          return DropdownMenuItem<int>(
-                            value: year,
-                            child: Text(year.toString()),
-                          );
-                        },
-                      ),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedYear = value);
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: _saveBudget,
+                    onPressed: _isSaving ? null : _saveBudget,
                     icon: const Icon(Icons.check),
                     label: Text(
                       isEditing ? 'Salvar alterações' : 'Criar orçamento',

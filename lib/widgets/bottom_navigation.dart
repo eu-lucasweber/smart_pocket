@@ -21,10 +21,9 @@ class BottomNavigation extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/transactions');
         break;
 
-      // Futuramente:
-      // case 2:
-      //   Navigator.pushReplacementNamed(context, '/relatorios');
-      //   break;
+      case 2:
+        Navigator.pushReplacementNamed(context, '/budgets');
+        break;
 
       case 3:
         Navigator.pushReplacementNamed(context, '/profile');
@@ -58,7 +57,7 @@ class BottomNavigation extends StatelessWidget {
         NavigationDestination(
           icon: Icon(Icons.bar_chart_outlined),
           selectedIcon: Icon(Icons.bar_chart),
-          label: 'Relatórios',
+          label: 'Orçamento',
         ),
         NavigationDestination(
           icon: Icon(Icons.account_circle_outlined),

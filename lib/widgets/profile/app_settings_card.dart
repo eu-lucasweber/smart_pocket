@@ -5,9 +5,6 @@ class AppSettingsCard extends StatelessWidget {
   final String selectedCurrency;
   final ValueChanged<String> onCurrencyChanged;
 
-  final double monthlySpendingLimit;
-  final ValueChanged<double> onMonthlyLimitChanged;
-
   final VoidCallback onClearTransactions;
   final VoidCallback onLogout;
 
@@ -15,31 +12,9 @@ class AppSettingsCard extends StatelessWidget {
     super.key,
     required this.selectedCurrency,
     required this.onCurrencyChanged,
-    required this.monthlySpendingLimit,
-    required this.onMonthlyLimitChanged,
     required this.onClearTransactions,
     required this.onLogout,
   });
-
-  String _formatCurrency(double value) {
-    final parts = value.toStringAsFixed(2).split('.');
-    final integerPart = parts[0];
-    final decimalPart = parts[1];
-
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < integerPart.length; i++) {
-      buffer.write(integerPart[i]);
-
-      final remaining = integerPart.length - i - 1;
-
-      if (remaining > 0 && remaining % 3 == 0) {
-        buffer.write('.');
-      }
-    }
-
-    return 'R\$ ${buffer.toString()},$decimalPart';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,38 +76,6 @@ class AppSettingsCard extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Limite mensal de gastos:',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatCurrency(monthlySpendingLimit),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-
-            Slider(
-              value: monthlySpendingLimit.clamp(0.0, 10000.0),
-              min: 0,
-              max: 10000,
-              divisions: 100,
-              activeColor: const Color(0xFF28C76F),
-              label: _formatCurrency(monthlySpendingLimit),
-              onChanged: onMonthlyLimitChanged,
-            ),
-
-            const SizedBox(height: 16),
 
             SizedBox(
               width: double.infinity,
