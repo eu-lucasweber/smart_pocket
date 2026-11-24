@@ -12,6 +12,8 @@ import 'screens/transactions_screen.dart';
 import 'screens/new_transaction_screen.dart';
 import 'screens/budgets_screen.dart';
 import 'screens/budget_form_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +24,7 @@ Future<void> main() async {
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => AppController()..load(),
+      create: (_) => AppController(),
       child: const ControleFinanceiroApp(),
     ),
   );
@@ -46,9 +48,11 @@ class ControleFinanceiroApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF5F5F5),
       ),
 
-      initialRoute: '/painel',
+      initialRoute: '/splash',
 
       routes: {
+        '/splash': (_) => const SplashScreen(),
+        '/login': (_) => const LoginScreen(),
         '/painel': (context) => const HomeScreen(),
         '/transactions': (context) => const TransactionsScreen(),
         '/transactions/new': (context) => const NewTransactionScreen(),
